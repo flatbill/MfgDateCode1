@@ -1,0 +1,84 @@
+
+> mfg-date-code@0.0.0 build:serverless:deploy C:\Users\asp0363\Desktop\MfgDateCode
+> npm run build:serverless && npm run deploy
+
+
+> mfg-date-code@0.0.0 build:serverless C:\Users\asp0363\Desktop\MfgDateCode
+> npm run build:browser:serverless && npm run build:server:serverless
+
+
+> mfg-date-code@0.0.0 build:browser:serverless C:\Users\asp0363\Desktop\MfgDateCode
+> ng build --prod --base-href /
+
+Generating ES5 bundles for differential loading...
+ES5 bundle generation complete.
+
+chunk {2} polyfills-es2015.e4301f567d405fdace91.js (polyfills) 36.2 kB [initial] [rendered]
+chunk {3} polyfills-es5.e6357a4e63f9e93d4fef.js (polyfills-es5) 126 kB [initial] [rendered]
+chunk {0} runtime-es2015.c5fa8325f89fc516600b.js (runtime) 1.45 kB [entry] [rendered]
+chunk {0} runtime-es5.c5fa8325f89fc516600b.js (runtime) 1.45 kB [entry] [rendered]
+chunk {1} main-es2015.03abfb5e49b807f1e8fd.js (main) 1.52 MB [initial] [rendered]
+chunk {1} main-es5.03abfb5e49b807f1e8fd.js (main) 1.57 MB [initial] [rendered]
+chunk {4} styles.778782175ca346e2919d.css (styles) 6.99 kB [initial] [rendered]
+Date: 2020-02-18T13:00:01.699Z - Hash: d5eb68dabbab6e79105e - Time: 35693ms
+
+> mfg-date-code@0.0.0 build:server:serverless C:\Users\asp0363\Desktop\MfgDateCode
+> webpack --config webpack.server.config.js --progress --colors
+
+Hash: [1m35154b3ec3ebeea12b94[39m[22m
+Version: webpack [1m4.39.2[39m[22m
+Time: [1m13260[39m[22mms
+Built at: 02/18/2020 [1m8:00:19 AM[39m[22m
+    [1mAsset[39m[22m      [1mSize[39m[22m  [1mChunks[39m[22m  [1m[39m[22m           [1m[39m[22m[1mChunk Names[39m[22m
+[1m[32mserver.js[39m[22m  1.12 MiB       [1m0[39m[22m  [1m[32m[emitted][39m[22m  server
+Entrypoint [1mserver[39m[22m = [1m[32mserver.js[39m[22m
+ [0] [1mexternal "path"[39m[22m 42 bytes {[1m[33m0[39m[22m}[1m[32m [built][39m[22m
+ [1] [1mexternal "fs"[39m[22m 42 bytes {[1m[33m0[39m[22m}[1m[32m [built][39m[22m
+ [3] [1mexternal "util"[39m[22m 42 bytes {[1m[33m0[39m[22m}[1m[32m [built][39m[22m
+ [5] [1mexternal "net"[39m[22m 42 bytes {[1m[33m0[39m[22m}[1m[32m [built][39m[22m
+ [7] [1mexternal "buffer"[39m[22m 42 bytes {[1m[33m0[39m[22m}[1m[32m [built][39m[22m
+ [9] [1mexternal "tty"[39m[22m 42 bytes {[1m[33m0[39m[22m}[1m[32m [built][39m[22m
+[10] [1mexternal "stream"[39m[22m 42 bytes {[1m[33m0[39m[22m}[1m[32m [built][39m[22m
+[24] [1mexternal "http"[39m[22m 42 bytes {[1m[33m0[39m[22m}[1m[32m [built][39m[22m
+[27] [1mexternal "events"[39m[22m 42 bytes {[1m[33m0[39m[22m}[1m[32m [built][39m[22m
+[28] [1mexternal "crypto"[39m[22m 42 bytes {[1m[33m0[39m[22m}[1m[32m [built][39m[22m
+[40] [1mexternal "zlib"[39m[22m 42 bytes {[1m[33m0[39m[22m}[1m[32m [built][39m[22m
+[45] [1mexternal "querystring"[39m[22m 42 bytes {[1m[33m0[39m[22m}[1m[32m [built][39m[22m
+[47] [1mexternal "url"[39m[22m 42 bytes {[1m[33m0[39m[22m}[1m[32m [built][39m[22m
+[66] [1m./server.ts[39m[22m 547 bytes {[1m[33m0[39m[22m}[1m[32m [built][39m[22m
+[68] [1mexternal "timers"[39m[22m 42 bytes {[1m[33m0[39m[22m}[1m[33m [optional][39m[22m[1m[32m [built][39m[22m
+    + 141 hidden modules
+
+[1m[33mWARNING in configuration
+The 'mode' option has not been set, webpack will fallback to 'production' for this value. Set 'mode' option to 'development' or 'production' to enable defaults for each environment.
+You can also set it to 'none' to disable any default behavior. Learn more: https://webpack.js.org/configuration/mode/[39m[22m
+
+> mfg-date-code@0.0.0 deploy C:\Users\asp0363\Desktop\MfgDateCode
+> serverless deploy
+
+Serverless: Packaging service...
+Serverless: Excluding development dependencies...
+Serverless: Uploading CloudFormation file to S3...
+Serverless: Uploading artifacts...
+Serverless: Uploading service MfgDateCode.zip file to S3 (1.65 MB)...
+Serverless: Validating template...
+Serverless: Updating Stack...
+Serverless: Checking Stack update progress...
+..............
+Serverless: Stack update finished...
+Service Information
+service: MfgDateCode
+stage: stage3
+region: us-east-1
+stack: MfgDateCode-stage3
+resources: 11
+api keys:
+  None
+endpoints:
+  ANY - https://qwz9dojux0.execute-api.us-east-1.amazonaws.com/stage3/{proxy+}
+  ANY - https://qwz9dojux0.execute-api.us-east-1.amazonaws.com/stage3
+functions:
+  api: MfgDateCode-stage3-api
+layers:
+  None
+Serverless: Removing old service artifacts from S3...
