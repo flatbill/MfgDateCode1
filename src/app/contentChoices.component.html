@@ -5,36 +5,49 @@
       <span class='ltha'>
       <span class='dacoLogo1'> Mfg Date Code Catalog </span>
       <!-- <button (click)='getDacoData()'>launch getDacoData</button> -->
-      <span *ngIf='xiOn' class='floatRight' id='xlArea1'>
+<!--       <span *ngIf='xiOn' class='floatRight' id='xlArea1'>
           <label for="xlInputFileHtmlId" class="font1 myBtn2 ">Import from XL </label>             
           <input type="file" (change)="onHtmlInputFileChange($event)"               
                multiple="false" 
                accept=".csv, .xls, .xlsx" 
                class='hide-xlInput'
                id='xlInputFileHtmlId'          
-          />  <!-- end input tag -->
-      </span> <!-- end xlArea1 -->
-      <!-- <button class="font1 myBtn2 "(click)='onClickSetLs()'>setLocal</button> -->
+          />  
+      </span> 
+ -->      <!-- <button class="font1 myBtn2 "(click)='onClickSetLs()'>setLocal</button> -->
       <!-- <button class="font1 myBtn2 "(click)='onClickGetLs()'>getLocal</button> -->
     </span> <!-- end left top header area -->
   </span>
   <span class ='m2'>
       <span class='font1'>
         <span class='mainMsg msg '>        {{mainMsg}}       </span> 
-        <span class='mainMsg msg blinker'> {{importingMsg}}  </span> 
+        <!-- <span *ngIf='diOn' class='mainMsg msg blinker'> {{importingMsg}}  </span>  -->
       </span> 
   </span> <!-- end m2 -->
   <span class="m3 itemSearchBox ">
-      <span class='floatRight'>
-        <span class="font1"> Item: </span>
-        <input type='text' size=8 [(ngModel)]="itemToSearchFor">
-        <span type='button' 
-          class = ' font1 myBtn2  '  
-          (click)='onItemSearchClick()' >
-          Search
-        </span>
-      </span>
+    <span class='floatRight'>
+      <span class='font1'>Bus Line: </span>
+      <select [(ngModel)]="selectedBl">
+        <option *ngFor="let c of udc41S2Array" 
+          [ngValue]="c">{{c.busLineTxt}}
+        </option>
+      </select>
+    <br>
+    <span class="font1"> Format: </span>
+    <input type='text' size=4 [(ngModel)]="formatToSearchFor">
+    <br>
+    <span class="font1"> Item: </span>
+    <input type='text' size=8 [(ngModel)]="itemToSearchFor">
+    <span type='button' 
+      class = ' font1 myBtn2  '  
+      (click)='onItemSearchClick()' >
+      Search
+    </span>
+
   </span>
+
+     
+  </span> 
   <span class=m4>
       <span class='font1'>
           <span class='helpMsg msg'> {{helpMsg}} </span>
@@ -280,12 +293,14 @@
         <span class='cgScList'>
           <span class='s1 font3'>  Item </span>
           <span class='s2 font3'> Formats </span>
+          <span class='s3 font3'> Bus Line </span>
         </span>
         <span *ngFor="let su of suFreqArray0" 
               class='cgScList'
               >
           <span class='s1 font4'> {{su.sku}} </span>
           <span class='s2 font4'> {{su.skuUsageFormats}} </span>
+          <span class='s3 font4'> {{su.skuBusLineTxt}} </span>
         </span>
       </div> <!-- end list sc  -->
 
@@ -301,6 +316,8 @@
           <span class='r1 font3'>  Item  </span>
           <span class='r2 font3'> Layer </span>
           <span class='r3 font3'> Format </span>
+          <span class='r4 font3'> Bus Line </span>
+
         </span>
         <span *ngFor="let sf of skuFormatArray1" 
               class='cgSfList'
@@ -308,6 +325,8 @@
           <span class='r1 font4'> {{sf.sfSku}}   </span>
           <span class='r2 font4'> {{sf.sfLayer}} </span>
           <span class='r3 font4'> {{sf.sfFormatKey}} </span>
+          <span class='r4 font4'> {{sf.sfBusLineTxt}} </span>
+
         </span>
       </div> <!-- end sf list  -->
 

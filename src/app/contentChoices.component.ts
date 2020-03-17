@@ -1,6 +1,5 @@
-// c:\users\ASP0363\appdata\roaming\code\user\settings.json
 import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef,
-  ViewChild, ElementRef, HostListener, Input} from '@angular/core';
+  ViewChild, ElementRef, HostListener} from '@angular/core';
 import { ContentChoice } from './contentChoice';
 import { ProductGridListItem } from './productGridList';
 import { DcFormatListItem } from './dcFormatList';
@@ -13,10 +12,19 @@ import { FormatMask } from './formatMask';
 import { ContentUsageCount } from './contentUsageCount';
 import { SkuUsageCount } from './skuUsageCount';
 import { FormatUsageCount } from './formatUsageCount';
-import { Observable,forkJoin } from 'rxjs';
-import {map} from 'rxjs/operators';
-import {HttpClient} from '@angular/common/http';
-import * as XLSX from 'xlsx'; // as XLSX creates the NAMESPACE XLSX
+import { BusLineUdc41S2 } from './BusLineUdc41S2';
+import { LayerUdc55D1 } from './LayerUdc55D1';
+// read json files, four MfgDateCode tables.  Eventually, run http to fetch jde data.
+import skuLayerFormatJson from '../assets/skuLayerFormat.json'
+import contentJson from '../assets/content.json'
+import formatJson from '../assets/format.json'
+import formatDetailJson from '../assets/formatDetail.json'
+
+// import { Observable,forkJoin } from 'rxjs';
+// import {map} from 'rxjs/operators';
+// import {HttpClient} from '@angular/common/http';
+// import * as XLSX from 'xlsx'; // as XLSX creates the NAMESPACE XLSX
+// import { isUndefined } from 'util';
 // import { FormsModule } from '@angular/forms';
 // import { get_table } from 'ssf/types';
 // import { getHostElement } from '@angular/core/src/render3';  //
@@ -24,7 +32,7 @@ import * as XLSX from 'xlsx'; // as XLSX creates the NAMESPACE XLSX
 // import { noComponentFactoryError } from '@angular/core/src/linker/component_factory_resolver';
 // import { appInitializerFactory } from '@angular/platform-browser/src/browser/server-transition';
 
-type AOA = any[][];           // array of arrays
+//type AOA = any[][];           // array of arrays
 @Component({
   selector: 'cc-selector1'    // tied to app.component.html
   , templateUrl: 'contentChoices.component.html'
@@ -61,6 +69,8 @@ export class ContentChoicesComponent implements OnInit   {
   ccFreqArray0: ContentUsageCount[];
   dfFreqArray0: FormatUsageCount[];
   suFreqArray0: SkuUsageCount[];
+  udc55D1Array: LayerUdc55D1[];
+  udc41S2Array: BusLineUdc41S2[];
   dfCount = 0; // how many formats are in the df format list
   suCount = 0; // how many skus are in the su sku usage list
   sfCount = 0; // how many item/layer/fmt are in the sf list
@@ -70,8 +80,9 @@ export class ContentChoicesComponent implements OnInit   {
   // myXlHdgMsg: string =  ' Import Format data from Excel   ===> ' ; This page is for finding Date Code Formats that fit your criteria.
   mainMsg = '  ** Search the Format Catalog ** ';
   importingMsg = '';
-  helpMsg = 'First, import from XL. '
-        + ' Formats are listed under the Format Catalog heading'
+
+  helpMsg =  // 'First, import from XL. '
+          ' Formats are listed under the Format Catalog heading'
         + ' on the right.  Hit the plus-sign to see them.'
         + ' Are you looking for Formats that fit certain criteria?'
         + ' Drag & drop from the Content area on the left'
@@ -82,9 +93,8 @@ export class ContentChoicesComponent implements OnInit   {
         + ' Drop Content into the lower section of the Product Grid  '
         + ' when you want to match an exact line and slot.'
         + ' Each drag-and-drop will further filter the Format list.'
-        + ' Also, you can enter a full or partial Item Number'
-        + ' to search for Formats used by certain Items.'
-        + ' This message will appear only for your first 5 visits.'
+        + ' Also, you can search by full or partial Item Number,'
+        + ' or other search criteria (upper right).'
         ;
   myModal1Msg1 = 'modal1 header info goes here';
   dp1a = '';
@@ -104,7 +114,8 @@ export class ContentChoicesComponent implements OnInit   {
   ccOn = true;
   pgOn = true;
   dpOn = false;
-  xiOn = true;
+  //xiOn = false;  // feb 2020 makes import xl button visible/invisible
+  //diOn = false; // data import message on/off
   plHide = true;  // prompt for literal
   pmHide = true;  // prompt for Mask with OK Cancel buttons
   pmmHide = true;  // prompt for Mask
@@ -126,9 +137,11 @@ export class ContentChoicesComponent implements OnInit   {
   fl: FormatLiteral;
   whatCcIamDragging: ContentChoice;
   whatPgIamDropping: ProductGridListItem;
-  xlData: AOA = [[1, 2], [3, 4]]; //  aoa means 'array of arrays'
+  //xlData: AOA = [[1, 2], [3, 4]]; //  aoa means 'array of arrays'
   itemToSearchFor = '';
-  firstScreenYN = 'Y';
+  formatToSearchFor = ''; 
+  selectedBl: BusLineUdc41S2;
+  screenSessionCount = 0;
   dfListOn = false;
   scListOn = false;
   sfListOn = false;
@@ -141,26 +154,24 @@ export class ContentChoicesComponent implements OnInit   {
   whichBrowser = '';
   exampleDate = '20190731';
   exampleExpDate = '20210731';
-  // dropdown experiment
-//   maskDropDownChoices = [
-//   {"id":"001","maskChoiceName":"NNNNAMCX"},
-//   {"id":"002","maskChoiceName":"NNNNAMC"},
-//   {"id":"003","maskChoiceName":"NAMCX"},
-//   {"id":"003","maskChoiceName":"NAMC"},
-//   {"id":"005","maskChoiceName":"AMC"}
-// ];
   showMaskDropDownYn: boolean = false;
   pgTarget: any;
   latestTarget: any;  
-  dPath1 = 
-  'https://mz7sh2eha2.execute-api.us-east-1.amazonaws.com/default/dacoFetch0?TableName=dacoFormat';
-  dPath2 = 
-  'https://mz7sh2eha2.execute-api.us-east-1.amazonaws.com/default/dacoFetch0?TableName=dacoContent';
-  dPath3 = 
-  'https://mz7sh2eha2.execute-api.us-east-1.amazonaws.com/default/dacoFetch0?TableName=dacoSkuLayerFormat';
-  dPath4 = 
-  'https://mz7sh2eha2.execute-api.us-east-1.amazonaws.com/default/dacoFetch0?TableName=dacoFormatDetail';
-  // myDcxxxxxx arrays take in the fetched data.
+  // Jan 2020 get data from prototype dynamo db
+  // Mar 2020 removed dynamo db, reads /assets/ .json instead
+  // dPath1 = 
+  // 'https://mz7sh2eha2.execute-api.us-east-1.amazonaws.com/default/dacoFetch0?TableName=dacoFormat';
+  // dPath2 = 
+  // 'https://mz7sh2eha2.execute-api.us-east-1.amazonaws.com/default/dacoFetch0?TableName=dacoContent';
+  // // dPath3 = 
+  // // 'https://mz7sh2eha2.execute-api.us-east-1.amazonaws.com/default/dacoFetch0?TableName=dacoSkuLayerFormat';
+  // dPath4 = 
+  // 'https://mz7sh2eha2.execute-api.us-east-1.amazonaws.com/default/dacoFetch0?TableName=dacoFormatDetail';
+  
+  // //Feb 2020 get data from amway dynamo db
+  // dPath3 = 
+  // 'https://i8mphl4f38.execute-api.us-east-1.amazonaws.com/stage1/?tableName=MfgDateCodeSkuLayerFormat';
+  // myDcxxxxxx arrays take in the fetched dynamo db data.
   myDcFormatArray1:DcFormatListItem[]
   myDcContentArray0:ContentChoice[] 
   myDcSkuFormatArray0:SkuFormat[] 
@@ -177,11 +188,11 @@ export class ContentChoicesComponent implements OnInit   {
     }
   ///////////////////////////////////////////////////////////////////
   constructor(
-    private cdr: ChangeDetectorRef,
-    private http: HttpClient
+    private cdr: ChangeDetectorRef
+    // private http: HttpClient
     // private elementRef: ElementRef
     // services are hard. we removed services,
-    // and put their code in this component. hooray!
+    // and put their code in this component to get rid of crosstalk.
   ) { }
 
   ngOnInit() {
@@ -191,10 +202,13 @@ export class ContentChoicesComponent implements OnInit   {
     this.getVisitCount();
     this.setVisitCount();
     this.chkNaggyHelp();
-    this.initDummyArrays();
-    this.getCcDfLocalStorage(); // if local storage exists, this will get it
+    this.initStartingArrays();
+    // this.getCcDfLocalStorage(); // if local storage exists, this will get it
+    this.selectedBl = {busLine: '',busLineTxt: ''} //needs init for some reason
+    this.getDacoDataJson() // for daco data that is in a .json file instead of http
+
     this.dfFilter(); // applies local storage, and delays enough for getDacoData to avoid webSocket error.
-    this.getDacoData() // calls http, puts it into arrays.
+    //this.getDacoData() // calls http, sets dnamodb data into into arrays.
     // getDacoData has a dfFilter in the subscription,
     // likely async subscription wizardy.
   }
@@ -314,7 +328,8 @@ export class ContentChoicesComponent implements OnInit   {
         sfFormatKey: this.sf.sfFormatKey,
         sfSku: this.sf.sfSku,
         sfLayer: this.sf.sfLayer,
-        sfFilterInOut: 'init'
+        sfFilterInOut: 'init',
+        sfBusLineTxt: this.sf.sfBusLineTxt
       }
     );
   }
@@ -445,7 +460,7 @@ export class ContentChoicesComponent implements OnInit   {
     );
     this.litInputName.nativeElement.value = ''; // give him blank input spot
     if (newId == 11) { this.pg0HelpMsg = ''; }
-  }
+  } 
   onPg0ContainerRightClick() {
     // -alert('on pg container right click');
     this.productGridArray0 = [];
@@ -828,7 +843,7 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
   }
   /////////////////////////////////////////////////////////////////
   dfFilter() {
-    //console.log('running dfFilter');
+    // -alert('running dfFilter');
     // build and filter the right-side lists (the DF section)
     // this func is called when user changed something for filtering,
     // either adding to pg0 or pg1 -or- removing from pg0 or pg1. or he typed item search.
@@ -841,22 +856,40 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
     this.initDfFilt(); // set all df0 filt to 'init'
     this.initFdFilt(); // set all fd0 filt to 'init'
     this.initSfFilt(); // set all sf0 filt to 'init'
-    if (this.countPg0() > 0) { this.dfFilterBum3(); }
-    if (this.countPg1() > 0) { this.dfFilterFun3(); }
 
-    if (this.itemToSearchFor.trim().length !== 0) {
-      this.matchSfItem(this.itemToSearchFor);
-      this.dfFilterGum3();
+    if (this.formatToSearchFor.trim().length !== 0) {
+      this.dfFilterHum3(this.formatToSearchFor); //filter for 1 format
     }
+
+
+    if (this.itemToSearchFor.trim().length !== 0
+    || typeof this.selectedBl.busLineTxt != 'undefined')
+      {
+      // -alert('running matchSfItem and dfFilterGum3')
+      this.matchSfItem(this.itemToSearchFor,this.selectedBl.busLineTxt);
+      this.dfFilterGum3();
+      }
+
+      if (this.countPg0() > 0) { this.dfFilterBum3(); }
+      if (this.countPg1() > 0) { this.dfFilterFun3(); }
+  
     // if he removed all filtering then setAllDfIn();
     if (this.countPg0() === 0
       && this.countPg1() === 0
-      && this.itemToSearchFor.trim().length === 0) { this.setAllDfIn(); }
-    // else 
-    //     { this.setDfFilterInOut();  }
+      && this.itemToSearchFor.trim().length === 0
+      && this.selectedBl.busLineTxt.trim().length === 0
+      && this.formatToSearchFor.trim().length === 0)
+       { this.setAllDfIn(); }
+
+
+
 
     // count usage of each format into df array0
     this.dfCountFmtUsage();
+
+    // shrinkify some of the lists 
+    this.dfFilterJum3();
+    this.dfFilterLum3();
 
     // create df array1 based on df array0 filter in/out
     this.dateCodeFormatArray1 =
@@ -885,9 +918,6 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
     this.fdSort();
     this.flBuild();
     this.flSort();
-   
-    
-
     //this.fmBuild();
 
     this.formatDetailArray1 =
@@ -916,31 +946,10 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
       this.formatMaskArray0.filter(mmm => mmm.fmMaskType == 'Date');
 
     this.cdr.markForCheck();
-
-    // ///////////////////////////
-    // set message:
-    if (this.firstScreenYN === 'Y') {
-      this.firstScreenYN = 'N';
-    } else {
-      this.mainMsg = 'Found ' + this.dfCount + ' matching formats.';
-      this.helpMsg = '';
-    }
-
-  }
+    this.chkNaggyHelp();
+    this.mainMsg = 'Found ' + this.dfCount + ' matching formats.';
+  } //end dfFilter
   /////////////////////////////////////////////////////////////////
-  // setDfFilterInOut() {
-  //   // look at the df entries, and decide to set dfFilter to 'in'
-  //   -alert('running setDfFilterInOut');
-  //   for (let i  = 0; i < this.dateCodeFormatArray0.length; i++) {
-  //     this.selectedDF = this.dateCodeFormatArray0[i];
-  //     if  ( this.selectedDF.dfFilterInOut.indexOf('match') >= 0
-  //         ||  this.selectedDF.dfFilterInOut.indexOf('in') >= 0   )
-  //        { this.selectedDF.dfFilterInOut = 'in'; }
-  //      else
-  //        { this.selectedDF.dfFilterInOut = 'out'; }
-  //     this.chgDFItem(this.selectedDF);
-  //   }
-  // }
 
   /////////////////////////////////////////////////////////////////
   dfFilterFun3() {
@@ -971,7 +980,7 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
       } else { this.selectedDF.dfFilterInOut = 'out'; } 
       this.chgDFItem(this.selectedDF);
     }
-  }
+  }  // end dfFilterFun3
   ///////////////////////////////////////////////
   dfFilterFun3b(dfParmIn: DcFormatListItem) {
     // loop thru pg
@@ -1189,7 +1198,7 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
         this.chgDFItem(this.selectedDF);
       }
     } // end of df loop2
-  }
+  } // end dfFilterGum3
 
   filterGum3b(dfParmIn: DcFormatListItem) {
     // -alert('running filterGum3b');
@@ -1205,12 +1214,57 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
       }
     }
   }
+
+  dfFilterHum3(formatToSearchForParmIn) {
+    // -alert('running dfFilterHum3')
+    // set df filter out for any df that duznt match formatToSearchFor
+      for (let i = 0; i < this.dateCodeFormatArray0.length; i++) {  // df loop
+        // for the current df rec, check fmt and set filterinout to out
+        this.selectedDF = this.dateCodeFormatArray0[i];
+        if (this.selectedDF.dfFormatKey !== formatToSearchForParmIn)
+          { this.dateCodeFormatArray0[i].dfFilterInOut = 'out' }
+        }
+    
+    // set fd filter out for any fd that duznt match formatToSearchFor
+    for (let i = 0; i < this.formatDetailArray1.length; i++) {  // fd loop
+      // for the current fd rec, check fmt and set filterinout to out
+      this.selectedFD = this.formatDetailArray1[i];
+      if (this.selectedFD.fdFormatKey !== formatToSearchForParmIn)
+       { this.formatDetailArray1[i].fdFilterInOut = 'out' }
+    }
+  } // end dfFilterHum3
+
+  dfFilterJum3(){  // shrinkify fd
+    let fi = 0 // find index
+    // set format detail fdFilter 'out' for formats not in df list.
+    for (let i = 0; i < this.formatDetailArray0.length; i++) {  
+      // fd loop
+      // for the current fd rec, look for a df for this format id
+      fi = this.dateCodeFormatArray0
+      .filter(df=> df.dfFilterInOut != 'out')
+      .findIndex(x => x.dfFormatKey == this.formatDetailArray0[i].fdFormatKey);
+      if (fi < 0) {
+        // df does not contain this fd.  set fd filter to 'out'
+        this.formatDetailArray0[i].fdFilterInOut = 'out'
+      }       
+    }
+  }  // end dfFilterJum3
+  dfFilterLum3(){  // shrinkify sf 
+    let fi = 0 // find index
+    // set  sfFilter to 'out' for sfFormats not in df list.
+    for (let i = 0; i < this.skuFormatArray0.length; i++) {  
+      // sf loop
+      // for the current sf rec, look for a df for this format id
+      fi = this.dateCodeFormatArray0
+      .filter(df=> df.dfFilterInOut != 'out')
+      .findIndex(x => x.dfFormatKey == this.skuFormatArray0[i].sfFormatKey);
+      if (fi < 0) {
+        // df does not contain this sf.  set sf filter to 'out'
+        this.skuFormatArray0[i].sfFilterInOut = 'out'
+      }
+    }
+  }  // end dfFilterLum3
   ////////////////////////////////////////////////////////////////////////
-  // fdSelect1(dfParmIn: DcFormatListItem) {
-  //   // shrink the fd list to  include
-  //   // only the fd's that match the selected df formatkey
-  //   this.formatDetailArray1 = this.formatDetailArray0.filter(rrr => rrr.fdFormatKey == dfParmIn.dfFormatKey);
-  // }
 
   fdCompose(dfParmIn: DcFormatListItem) {
     // -alert('running fdCompose');
@@ -1425,48 +1479,6 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
     this.dp2c = ' July 31, 2019';
     this.dp2d = '';
   }
-  // fdModal1(dfParmIn: DcFormatListItem) {
-  //   // show Modal1 popup dialog.
-  //   // show info for the selected df
-  //   // and  lists fd's for the  selected df
-  //   // -alert('running fdModal1');
-  //   this.myModal1Msg2 = 'Preview lot: 2018001ABCD   Preview date: 2018/07/31';
-  //   this.myModal1Msg1 = 'Format: ' + this.selectedDF.dfFormatKey + ' ';
-  //   this.myModal1Msg1 = this.myModal1Msg1 + this.selectedDF.dfFormatName;
-
-  //   // this.dpLeft1a = 'Format: ' + this.selectedDF.dfFormatKey + ' '
-  //                   // +  this.selectedDF.dfFormatName;
-  //   this.dpHeadRight = 'Preview lot: 2018001ABCD   Preview date: 2018/07/31';
-
-
-  //   let modal1 = document.getElementById('myModal1');  // controls modal open
-  //   let span = document.getElementsByClassName('closerX')[0]; // controls modal close
-  //   modal1.style.display = 'blocky'; // makes modal1 visible
-  //   // When the user clicks on <span> (x), close the modal
-  //   modal1.onclick = function () {
-  //     modal1.style.display = 'none'; // makes model1 invisible
-  //   };
-  //   // When the user clicks anywhere outside of the modal, close it
-  //   window.onclick = function (event) {
-  //     if (event.target == modal1) { modal1.style.display = 'none'; }
-  //   };
-  //   // end of modal1()
-  // }
-  // fdModal2(dfParmIn: DcFormatListItem) {
-  //   // -alert('running fdModal2');
-  //   this.myModal1Msg1 = 'Format: ' + this.selectedDF.dfFormatKey + ' ';
-  //   this.myModal1Msg1 = this.myModal1Msg1 + this.selectedDF.dfFormatName;
-  //   let modal2 = document.getElementById('myModal2');  // controls modal open
-  //   let span = document.getElementsByClassName('closerX')[0]; // controls modal close
-  //   modal2.style.display = 'block'; // makes modal2 visible
-  //   // When the user clicks on <span> (x), close the modal
-  //   modal2.onclick = function () {
-  //     modal2.style.display = 'none'; // makes model2 invisible
-  //   };
-  //   window.onclick = function (event) {
-  //     if (event.target == modal2) { modal2.style.display = 'none'; }
-  //   };
-  // }
 
   fdFilter() {
     // -alert('running fdFilter');
@@ -1623,13 +1635,13 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
   }
   ////////////////////////////////////////////////////////////////////////
 
-  initDummyArrays() {
+  initStartingArrays() {
     this.contentChoiceArray1 = [
       { id: 11, contentName: 'Test1', contentType: 'jwf', contentMask: '', contentUsageCount: 0 },
       { id: 12, contentName: 'Test2', contentType: 'jwf', contentMask: '', contentUsageCount: 0 },
       { id: 13, contentName: 'Test3', contentType: 'jwf', contentMask: '', contentUsageCount: 0 },
       { id: 14, contentName: 'Literal', contentType: 'lit', contentMask: '', contentUsageCount: 0 },
-      { id: 15, contentName: 'Run Import to Reset These', contentType: 'jwf', contentMask: '', contentUsageCount: 0 }
+      { id: 15, contentName: 'Data Import will reset this', contentType: 'jwf', contentMask: '', contentUsageCount: 0 }
     ];
     //this.receivedDcContentChoiceArray0 = this.contentChoiceArray1 //init the @input array
 
@@ -1680,7 +1692,8 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
         sfSku: 'BLA',
         sfLayer: '1',
         sfFormatKey: '357',
-        sfFilterInOut: 'init'
+        sfFilterInOut: 'init',
+        sfBusLineTxt: 'ARTISTRY'
       }
     ];
     this.skuFormatArray1 = this.skuFormatArray0;
@@ -1709,11 +1722,40 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
       { contentName: 'Run Import to Reset These', contentUsageCount: 1 }
     ];
     this.suFreqArray0 = [
-      { sku: 'foo123', skuUsageCount: 123, skuUsageFormats: '7 1008', skuUsageFilterInOut: 'init' },
-      { sku: 'foo777', skuUsageCount: 777, skuUsageFormats: '7 1111', skuUsageFilterInOut: 'init' }
+      { sku: 'foo123', skuUsageCount: 123, skuUsageFormats: '7 1008', skuUsageFilterInOut: 'init', skuBusLineTxt: 'BEAUTY' },
+      { sku: 'foo777', skuUsageCount: 777, skuUsageFormats: '7 1111', skuUsageFilterInOut: 'init', skuBusLineTxt: 'BEAUTY' }
     ];
     this.initFc0();
-  }
+  
+    this.udc55D1Array = [
+      { layer: '10', layerName: 'Unit' },
+      { layer: '20', layerName: 'Tray' },
+      { layer: '30', layerName: 'Carton' },
+      { layer: '40', layerName: 'Master Case' },
+      { layer: '50', layerName: 'Mailer' },
+      { layer: '60', layerName: 'Set Box' },
+      { layer: '70', layerName: 'Sleeve' },
+      { layer: '80', layerName: 'Unit Closure' },
+      { layer: '90', layerName: 'Carton-Print & Apply Label' },
+      { layer: '95', layerName: 'Korea Samples' },
+      { layer: '96', layerName: 'Temperature Controlled' }     
+    ]; // end udc55D1Array
+
+    this.udc41S2Array = [
+      { busLine: ' ', busLineTxt : ' '  },
+      { busLine: 'A', busLineTxt : 'BEAUTY'  },
+      { busLine: 'C', busLineTxt: 'PERSONAL CARE' },
+      { busLine: 'E', busLineTxt: 'HOME CARE' },
+      { busLine: 'G', busLineTxt: 'NUTRITION' },
+      { busLine: 'K', busLineTxt: 'DURABLES' },
+      { busLine: 'N', busLineTxt: 'NEW BUSINESS' },
+      { busLine: 'O', busLineTxt: 'OTHER' },
+      { busLine: 'P', busLineTxt: 'AMAGIFT' },
+      { busLine: 'R', busLineTxt: 'CATALOG' },
+      { busLine: 'U', busLineTxt: 'KITS AND SUPP...' }
+    ]; // end udc41S2Array
+
+  } // end initStartingArrays
   //
   initFc0() { // used for housing df & fd values shown in format detail
     this.formatComposeArray0 = [
@@ -1732,140 +1774,143 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
 
   // XL import section:
   /////////////////////////////////////////////
-  onHtmlInputFileChange(evt: any) {
-    // -alert('running onHtmlInputFileChange');
-    // ties to html <input type="file" (change)="onFileChange($event)"  />
-    // only gets called when the screen 'choose files' field
-    // is changed to a different filename.
-    this.mainMsg = ' '; // blinker during import so use other msg area
-    this.importingMsg = ' running data import... ';
-    this.helpMsg = '';
-    let target: DataTransfer = <DataTransfer>(evt.target);
-    if (target.files.length !== 1) { throw new Error('Cannot use multiple files') };
-    // -alert ('fall here when no error');
-    // document.getElementById('xlArea1').className = 'hide-sometimes';
-    this.xiOn = false;
-    let reader: FileReader = new FileReader();
-    // -------------------------------------------------
-    reader.onload = (e: any) => {
-      this.mainMsg = 'data imported. ';
-      this.importingMsg = '';
-      this.contentChoiceArray1 = [];
-      this.dateCodeFormatArray0 = [];
-      this.dateCodeFormatArray1 = [];
-      this.formatDetailArray0 = [];
-      this.skuFormatArray0 = [];
-      this.skuFormatArray1 = [];
-      this.maskAndTextArray0 = [];
-      this.formatLiteralArray0 = [];
-      this.formatMaskArray0 = [];
-      this.ccFreqArray0 = [];
-      this.dfFreqArray0 = [];
-      // -alert('running reader.onload');
-      // this.clearDemoArrays; stupid callback duznt call this function?
-      // read workbook .  this is a callback, executed after the file read.
-      let bstr: string = e.target.result;
-      let wb: XLSX.WorkBook = XLSX.read(bstr, { type: 'binary' });
-      let wsname: string = wb.SheetNames[0]; // first worksheet  is 0 /////
-      let ws: XLSX.WorkSheet = wb.Sheets[wsname];
-      this.setCCfromXL(ws);
-      wsname = wb.SheetNames[1];  // second worksheet  is 1 /////
-      ws = wb.Sheets[wsname];
-      this.setDFfromXL(ws);
-      //
-      wsname = wb.SheetNames[2];  // third worksheet  is 2 /////
-      ws = wb.Sheets[wsname];
-      this.setFDfromXL(ws);
-      wsname = wb.SheetNames[3];  // fourth worksheet  is 3 /////
-      ws = wb.Sheets[wsname];
-      this.setSFfromXL(ws);
-      wsname = wb.SheetNames[4];  // fourth worksheet  is 4 /////
-      ws = wb.Sheets[wsname];
-      this.setMTfromXL(ws); 
-      // this.setFMfromXL(); // set fm as a subset of MT ////
-      this.dfFilter();
+  // onHtmlInputFileChange(evt: any) {
+  //   // -alert('running onHtmlInputFileChange');
+  //   // ties to html <input type="file" (change)="onFileChange($event)"  />
+  //   // only gets called when the screen 'choose files' field
+  //   // is changed to a different filename.
+  //   this.mainMsg = ' '; // blinker during import so use other msg area
+  //   this.importingMsg = ' running data import... ';
+  //   this.diOn = true;
+  //   let target: DataTransfer = <DataTransfer>(evt.target);
+  //   if (target.files.length !== 1) { throw new Error('Cannot use multiple files') };
+  //   this.xiOn = false;
+  //   let reader: FileReader = new FileReader();
+  //   // -------------------------------------------------
+  //   reader.onload = (e: any) => {
+  //     this.mainMsg = 'data imported. ';
+  //     this.importingMsg = '';
+  //     this.diOn = false;
+  //     this.contentChoiceArray1 = [];
+  //     this.dateCodeFormatArray0 = [];
+  //     this.dateCodeFormatArray1 = [];
+  //     this.formatDetailArray0 = [];
+  //     this.skuFormatArray0 = [];
+  //     this.skuFormatArray1 = [];
+  //     this.maskAndTextArray0 = [];
+  //     this.formatLiteralArray0 = [];
+  //     this.formatMaskArray0 = [];
+  //     this.ccFreqArray0 = [];
+  //     this.dfFreqArray0 = [];
+  //     // -alert('running reader.onload');
+  //     // read workbook .  this is a callback, executed after the file read.
+  //     let bstr: string = e.target.result;
+  //     let wb: XLSX.WorkBook = XLSX.read(bstr, { type: 'binary' });
+  //     let wsname: string = wb.SheetNames[0]; // first worksheet  is 0 /////
+  //     let ws: XLSX.WorkSheet = wb.Sheets[wsname];
+  //     this.setCCfromXL(ws);
+  //     wsname = wb.SheetNames[1];  // second worksheet  is 1 /////
+  //     ws = wb.Sheets[wsname];
+  //     this.setDFfromXL(ws);
+  //     //
+  //     wsname = wb.SheetNames[2];  // third worksheet  is 2 /////
+  //     ws = wb.Sheets[wsname];
+  //     this.setFDfromXL(ws);
+  //     wsname = wb.SheetNames[3];  // fourth worksheet  is 3 /////
+  //     ws = wb.Sheets[wsname];
+  //     this.setSFfromXL(ws);
+  //     wsname = wb.SheetNames[4];  // fourth worksheet  is 4 /////
+  //     ws = wb.Sheets[wsname];
+  //     this.setMTfromXL(ws); 
+  //     this.dfFilter();
 
-      this.cdr.markForCheck();
-      this.setCcDfLocalStorage();
-    }; // end of reader.onload callback
-    // --------------------------------------------------
-    reader.readAsBinaryString(target.files[0]);
-  } // end of onHtmlInputFileChange
+  //     this.cdr.markForCheck();
+  //     this.setCcDfLocalStorage();
+  //   }; // end of reader.onload callback
+  //   // --------------------------------------------------
+  //   reader.readAsBinaryString(target.files[0]);
+  // } // end of onHtmlInputFileChange
 
-  setCCfromXL(ws: XLSX.WorkSheet) {
-    this.xlData = <AOA>(XLSX.utils.sheet_to_json(ws, { range: 1, header: 1 }));
-    let ccGo: any;
-    for (let key in this.xlData) {
-      if (this.xlData.hasOwnProperty(key)) {
-        ccGo = this.xlData[key];
-        this.addCC(ccGo); // inserts one row into the cc table
-      }
-    }
-  }
-  setDFfromXL(ws: XLSX.WorkSheet) {
-    this.xlData = <AOA>(XLSX.utils.sheet_to_json(ws, { range: 1, header: 1 }));
-    let dfGo: any;
-    for (let i in this.xlData) {
-      if (this.xlData.hasOwnProperty(i)
-        && this.xlData[i].length > 0) {
-        dfGo = this.xlData[i];
-        this.addDF(dfGo);  // inserts one row into the DF table
-      }
-    }
-  }
-  setFDfromXL(ws: XLSX.WorkSheet) {
-    this.xlData = <AOA>(XLSX.utils.sheet_to_json(ws, { range: 1, header: 1 }));
-    let fdGo: any;
-    for (let i in this.xlData) {
-      if (this.xlData.hasOwnProperty(i)
-        && this.xlData[i].length > 0) {
-        fdGo = this.xlData[i];
-        this.addFD(fdGo);  // inserts one row into the FD table
-      }
-    }
-  }
+  // setCCfromXL(ws: XLSX.WorkSheet) {
+  //   this.xlData = <AOA>(XLSX.utils.sheet_to_json(ws, { range: 1, header: 1 }));
+  //   let ccGo: any;
+  //   for (let key in this.xlData) {
+  //     if (this.xlData.hasOwnProperty(key)) {
+  //       ccGo = this.xlData[key];
+  //       this.addCC(ccGo); // inserts one row into the cc table
+  //     }
+  //   }
+  // }
+  // setDFfromXL(ws: XLSX.WorkSheet) {
+  //   this.xlData = <AOA>(XLSX.utils.sheet_to_json(ws, { range: 1, header: 1 }));
+  //   let dfGo: any;
+  //   for (let i in this.xlData) {
+  //     if (this.xlData.hasOwnProperty(i)
+  //       && this.xlData[i].length > 0) {
+  //       dfGo = this.xlData[i];
+  //       this.addDF(dfGo);  // inserts one row into the DF table
+  //     }
+  //   }
+  // }
+  // setFDfromXL(ws: XLSX.WorkSheet) {
+  //   this.xlData = <AOA>(XLSX.utils.sheet_to_json(ws, { range: 1, header: 1 }));
+  //   let fdGo: any;
+  //   for (let i in this.xlData) {
+  //     if (this.xlData.hasOwnProperty(i)
+  //       && this.xlData[i].length > 0) {
+  //       fdGo = this.xlData[i];
+  //       this.addFD(fdGo);  // inserts one row into the FD table
+  //     }
+  //   }
+  // }
   ////////////////////////////////////
-  setSFfromXL(ws: XLSX.WorkSheet) {
-    this.xlData = <AOA>(XLSX.utils.sheet_to_json(ws, { range: 1, header: 1 }));
-    let sfGo: any;
-    for (let i in this.xlData) {
-      if (this.xlData.hasOwnProperty(i)
-        && this.xlData[i].length > 0) {
-        sfGo = this.xlData[i];
-        this.addSF(sfGo);  // inserts one row into the SF table
-      }
-    }
-  }
+  // setSFfromXL(ws: XLSX.WorkSheet) {
+  //   this.xlData = <AOA>(XLSX.utils.sheet_to_json(ws, { range: 1, header: 1 }));
+  //   let sfGo: any;
+  //   for (let i in this.xlData) {
+  //     if (this.xlData.hasOwnProperty(i)
+  //       && this.xlData[i].length > 0) {
+  //       sfGo = this.xlData[i];
+  //       this.addSF(sfGo);  // inserts one row into the SF table
+  //     }
+  //   }
+  // }
 
-  setMTfromXL(ws: XLSX.WorkSheet) {
-    this.xlData = <AOA>(XLSX.utils.sheet_to_json(ws, { range: 1, header: 1 }));
-    let mtGo: any;
-    for (let i in this.xlData) {
-      if (this.xlData.hasOwnProperty(i)
-        && this.xlData[i].length > 0) {
-        mtGo = this.xlData[i];
-        this.addMT(mtGo);  // inserts one row into the SF table
-      }
-    }
-  }
+  // setMTfromXL(ws: XLSX.WorkSheet) {
+  //   this.xlData = <AOA>(XLSX.utils.sheet_to_json(ws, { range: 1, header: 1 }));
+  //   let mtGo: any;
+  //   for (let i in this.xlData) {
+  //     if (this.xlData.hasOwnProperty(i)
+  //       && this.xlData[i].length > 0) {
+  //       mtGo = this.xlData[i];
+  //       this.addMT(mtGo);  // inserts one row into the SF table
+  //     }
+  //   }
+  // }
 
   onItemSearchClick() {
     // called when he hits the item search button.
     //console.log('running onItemSearchClick');
+    // user has various fields for searching, 
+    // like item Nbr, format id, bus Line.
     this.itemToSearchFor = this.itemToSearchFor
       .toUpperCase()
       .trim()
       .replace('*', '')
       .replace('*', '');
-
     this.dfFilter(); // -apply all filters including the item filter
   }
-  matchSfItem(itemParmIn: string) {
+  matchSfItem(itemParmIn: string, busLineTxtParmIn: string) {
     //console.log('running matchSfItem ');
+    // caller is passing in item number &  bus line
     itemParmIn = itemParmIn.trim();
+    busLineTxtParmIn = busLineTxtParmIn.trim();
+    // bus line txt parm in might be null, but thats ok it works.
     this.skuFormatArray0 =
       this.skuFormatArray0.map(sf => {
-        if (sf.sfSku.toString().indexOf(itemParmIn) > -1) {
+        if (sf.sfSku.toString().indexOf(itemParmIn) > -1
+        && sf.sfBusLineTxt.toString().indexOf(busLineTxtParmIn) > -1) 
+        {
           sf.sfFilterInOut = 'skuMatch';
         } else {
           sf.sfFilterInOut = 'out';
@@ -1942,6 +1987,10 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
     // count occurences of each item/layer/format
     // store the count into suFreqArray0.
     // -alert('running suBuild');
+    let fi = 0
+    let myBusLineTxt = '' //
+    let myVal: number = 0 // the count of this sf
+    //alert('sku format array 1 length ' + this.skuFormatArray1.length)
     let sfFreq = this.skuFormatArray1
       .map(({ sfSku }) => sfSku)
       .reduce((n, sfSku) => {
@@ -1951,16 +2000,20 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
       }, {});
     // -alert(JSON.stringify(sfFreq) );
     this.suFreqArray0 = [];
-    Object.entries(sfFreq).forEach(entry => {
+    Object.entries(sfFreq).forEach(el => {
       // sfFreq is an array that contains a set of key & val
-      let myKey = entry[0];                // the item nbr key
-      let myVal: number = Number(entry[1]); // the count of this sf
+      let mySkuKey = el[0];     // the item nbr key
+      myVal = Number(el[1]); // the count of this sf
+      fi = this.skuFormatArray0.findIndex(x => x.sfSku === mySkuKey);
+      if (fi>-1) {myBusLineTxt= this.skuFormatArray0[fi].sfBusLineTxt
+    } else       {myBusLineTxt=''}
       this.suFreqArray0.push(
         {
-          sku: myKey,
+          sku: mySkuKey,
           skuUsageCount: myVal,
           skuUsageFormats: '???',  // set this later
-          skuUsageFilterInOut: 'out'  // set this later
+          skuUsageFilterInOut: 'out',  // set this later
+          skuBusLineTxt: myBusLineTxt         
         }
       );
     }); // end of Object.entries loop
@@ -1968,9 +2021,6 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
     this.setSuFormatList();
   }  //  end of sfCount
 
-  // mtBuild() {
-  //   //console.log('run empty mtBuild')
-  // }
 
   flBuild() {
     // fl means Format Literal
@@ -2008,35 +2058,6 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
     });
 
   }
-  // fmBuild() {
-  //   //-alert('running fmBuild');
-  //   this.formatMaskArray0 = [];
-  //   let maskType = '';
-  //   // set fm by using a subset of mt  (mt is mask+text, fm is just the mask )
-  //   for (let i = 0; i < this.maskAndTextArray0.length; i++) {
-  //     if (this.maskAndTextArray0[i].mtMorT == 'm') {
-  //       if (this.maskAndTextArray0[i].mtMaskOrText.toString().indexOf('AMC') > -1) {
-  //         maskType = 'Lot Number'; // has AMC in the mask
-  //       } else {
-  //         maskType = 'Date';  // must be a date
-  //       }
-  //       // push this mask into fm but first see if the mask already in fm0
-  //       let j: number = this.formatMaskArray0
-  //       .findIndex(m => m.fmMask === this.maskAndTextArray0[i].mtMaskOrText);
-  //       if (j === -1) {
-  //         // push into fm
-  //         this.formatMaskArray0.push(
-  //         {
-  //             id: 27,
-  //             fmMaskType: maskType,
-  //             fmMask: this.maskAndTextArray0[i].mtMaskOrText,
-  //             fmFilterInOut: 'init'
-  //         } );
-  //       }
-  //     }
-  //   }
-    
-  // }
 
   setSuFormatList() {
     // there is one sku for each rec in suFreqArray0.
@@ -2066,12 +2087,6 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
     return fList;
   } // end of setSfFormatListB
 
-  showMaskDropDown() {
-    // this.showMaskDropDownYn = true;
-  }
-  hideMaskDropDown() {
-    //this.showMaskDropDownYn = false;
-  }
   onClickMaskDropDown(maskDropDownChoiceParmIn: any) {
     // -alert('onClickMaskDropDown ' + maskDropDownChoiceParmIn.maskChoiceName);
     // get here when he chose a dropdown maskDropDownChoiceParmIn
@@ -2119,6 +2134,7 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
     let n = this.dacoVisitCount + 1;
     //this.dacoVisitCountKeyName = 'dacoVisitCountKey';
     localStorage.setItem(this.dacoVisitCountKeyName, n.toString() );
+
   }
   getVisitCount() {
     let x = localStorage.getItem(this.dacoVisitCountKeyName);
@@ -2233,24 +2249,26 @@ canButMaskInput(maskInputParmIn:  HTMLInputElement) {
         || this.whichBrowser == 'SAFARI') {
           // browser is OK
     } else {
-        alert('Your browser is not supported. Please use Chrome or Safari.');
+        alert('Your browser is not supported. Please use Chrome, Edge, or Safari.');
     }
   }
   chkNaggyHelp() {
-    // if he is an experienced user, quit showing him naggy help
-    // after 5 visits, don't show the big 'how to' paragraph
-    // after 20 visits, don't the drag-here messages
-    if (this.dacoVisitCount >= 5) { this.helpMsg = ''; }
+    // if he is an experienced user, quit showing him naggy help.
+    // there are various help messages.
+    // after first few web visits, don't show big 'how to'.
+    // after yy saved visits, don't show drag-here messages
     if (this.dacoVisitCount >= 20) {
       this.dragHelpMsg = '';
       this.dragHelpOn = false;
-      this.dfHelpMsg = '';
     }
+    this.screenSessionCount = this.screenSessionCount + 1
+    if (this.screenSessionCount > 3 || this.dacoVisitCount >= 10) {
+      this.helpMsg = '';
+    } 
   }
 
-//  // example promise
-//  // call sleeper1 to stick in a brief delay. ( ms is millisecs)
 sleeper1(ms) {
+  // example promise. call sleeper1 to stick in a brief delay. ( ms is millisecs)
   const promise1 = new Promise((resolve1, reject) => {
     setTimeout(() => {
       // -alert('Sleeper1 Done');
@@ -2265,150 +2283,258 @@ sleeper1(ms) {
 //   return new Promise(resolve => setTimeout(() => resolve(x), ms));
 // };
 // }
-onClickSetLs() {
-  this.setCcDfLocalStorage();
-}
-setCcDfLocalStorage() {
-  // -alert('running setLocal')
-  let x = '';
-  x =  JSON.stringify(this.contentChoiceArray1);
-  localStorage.setItem('dacoCcKey', x);
-  x =  JSON.stringify(this.dateCodeFormatArray0);
-  localStorage.setItem('dacoDfKey', x);
-  x =  JSON.stringify(this.formatDetailArray0);
-  localStorage.setItem('dacoFdKey', x);
-  x =  JSON.stringify(this.skuFormatArray0);
-  localStorage.setItem('dacoSfKey', x);
-  x =  JSON.stringify(this.maskAndTextArray0);
-  localStorage.setItem('dacoMtKey', x);
-}
-onClickGetLs() {
-  this.getCcDfLocalStorage();
-  this.dfFilter();
-}
 
-getCcDfLocalStorage() {
-  // -alert ('running getLocal')
-  let x = '';
-  x = localStorage.getItem('dacoCcKey');
-  if (x) { this.contentChoiceArray1 = JSON.parse(x); }
-  x = localStorage.getItem('dacoDfKey');
-  if (x) { this.dateCodeFormatArray0 = JSON.parse(x); }
-  x = localStorage.getItem('dacoFdKey');
-  if (x) { this.formatDetailArray0 = JSON.parse(x); }
-  x = localStorage.getItem('dacoSfKey');
-  if (x) { this.skuFormatArray0 = JSON.parse(x); }
-  x = localStorage.getItem('dacoMtKey');
-  if (x) { this.maskAndTextArray0 = JSON.parse(x); }
-}
+// onClickSetLs() {
+//   this.setCcDfLocalStorage();
+// }
+
+// setCcDfLocalStorage() {
+//   // -alert('running setLocal')
+//   let x = '';
+//   x =  JSON.stringify(this.contentChoiceArray1);
+//   localStorage.setItem('dacoCcKey', x);
+//   x =  JSON.stringify(this.dateCodeFormatArray0);
+//   localStorage.setItem('dacoDfKey', x);
+//   x =  JSON.stringify(this.formatDetailArray0);
+//   localStorage.setItem('dacoFdKey', x);
+//   x =  JSON.stringify(this.skuFormatArray0);
+//   localStorage.setItem('dacoSfKey', x);
+//   x =  JSON.stringify(this.maskAndTextArray0);
+//   localStorage.setItem('dacoMtKey', x);
+// }
+
+// onClickGetLs() {
+//   this.getCcDfLocalStorage();
+//   this.dfFilter();
+// }
+
+// getCcDfLocalStorage() {
+//   // -alert ('running getLocal')
+//   let x = '';
+//   x = localStorage.getItem('dacoCcKey');
+//   if (x) { this.contentChoiceArray1 = JSON.parse(x); }
+//   x = localStorage.getItem('dacoDfKey');
+//   if (x) { this.dateCodeFormatArray0 = JSON.parse(x); }
+//   x = localStorage.getItem('dacoFdKey');
+//   if (x) { this.formatDetailArray0 = JSON.parse(x); }
+//   x = localStorage.getItem('dacoSfKey');
+//   if (x) { this.skuFormatArray0 = JSON.parse(x); }
+//   x = localStorage.getItem('dacoMtKey');
+//   if (x) { this.maskAndTextArray0 = JSON.parse(x); }
+// }
 
 ///////////////////////
 // http fetch functions //////////////////////////
 /////////////////////// 
-getDacoData(){
-  // call http for four tables.  forkJoin results of four table reads.  
-  // Transform from database layout, into local array rec layouts.
-  //console.log('run getDacoData')
-  this.importingMsg = ' running data import... ';
-  this.myDcFormatArray1 = []
-  this.myDcContentArray0 = []
-  this.myDcSkuFormatArray0 = []
-  this.myDcFormatDetailsArray0 = [] 
-  let zzFormat:Observable<any> =  this.http.get<{Items: any[]}>(this.dPath1)
-                                     .pipe( map(x => x.Items))
-  let zzContent:Observable<any> =  this.http.get<{Items: any[]}>(this.dPath2)
-                                     .pipe( map(x => x.Items))
-  let zzSkuFormat:Observable<any> =  this.http.get<{Items: any[]}>(this.dPath3)
-                                     .pipe( map(x => x.Items))
-  let zzSkuFormatDetail:Observable<any> =  this.http.get<{Items: any[]}>(this.dPath4)
-                                     .pipe( map(x => x.Items))
+// getDacoData(){
+//   // call http for four tables.  forkJoin results of four table reads.  
+//   // Transform from database layout, into local array rec layouts.
+//   //console.log('run getDacoData')
+//   this.importingMsg = ' running data import... ';
+//   this.diOn = true;
+//   this.myDcFormatArray1 = []
+//   this.myDcContentArray0 = []
+//   this.myDcSkuFormatArray0 = []
+//   this.myDcFormatDetailsArray0 = [] 
+//   let zzFormat:Observable<any> =  this.http.get<{Items: any[]}>(this.dPath1)
+//                                      .pipe( map(x => x.Items))
+//   let zzContent:Observable<any> =  this.http.get<{Items: any[]}>(this.dPath2)
+//                                      .pipe( map(x => x.Items))
+//   let zzSkuFormat:Observable<any> =  this.http.get<{Items: any[]}>(this.dPath3)
+//                                      .pipe( map(x => x.Items))
+//   let zzSkuFormatDetail:Observable<any> =  this.http.get<{Items: any[]}>(this.dPath4)
+//                                      .pipe( map(x => x.Items))
 
-  forkJoin([zzFormat, zzContent, zzSkuFormat, zzSkuFormatDetail]).subscribe(forkJoinResults => {
-    //console.log('run forkJoin...')
-    // forkJoin is a cool sort of callback-ish func, called when four observables are done.
-    this.transformFetchedFormats(forkJoinResults[0])
-    this.transformFetchedContents(forkJoinResults[1])
-    this.transformFetchedSkuFormats(forkJoinResults[2])
-    this.transformDacoFormatDetails(forkJoinResults[3])
-    // done tranforming. apply the fetched data to the main arrays
-    this.dateCodeFormatArray0 = this.myDcFormatArray1
-    this.contentChoiceArray1 = this.myDcContentArray0
-    this.skuFormatArray0 = this.myDcSkuFormatArray0 
-    this.formatDetailArray0 = this.myDcFormatDetailsArray0
-    this.createMt() 
-    this.dfFilter()
-    //console.log('done fetchDacoData, Done forkJoin')
-    // maybe:
-    //this.setCcDfLocalStorage();
-    //console.log('done fetchDacoData, Done forkJoin')
-    this.importingMsg = ' ';
+//   forkJoin([zzFormat, zzContent, zzSkuFormat, zzSkuFormatDetail]).subscribe(forkJoinResults => {
+//     //console.log('run forkJoin...')
+//     // forkJoin is a cool sort of callback-ish func, called when four observables are done.
+//     this.transformFetchedFormats(forkJoinResults[0])
+//     this.transformFetchedContents(forkJoinResults[1])
+//     this.transformFetchedSkuFormats(forkJoinResults[2])
+//     this.transformDacoFormatDetails(forkJoinResults[3])
+//     // done tranforming. apply the fetched data to the main arrays
+//     this.importingMsg = '';
+//     this.diOn = false;
+//     //this.dateCodeFormatArray0 = this.myDcFormatArray1 //Mar2020 dont use dynamodb for this anymore.
+//     //this.contentChoiceArray1 = this.myDcContentArray0 //Mar2020 dont use dynamodb for this table
+//     //this.skuFormatArray0 = this.myDcSkuFormatArray0 // Mar2020 dont use dynamodb for this table
+//     //this.formatDetailArray0 = this.myDcFormatDetailsArray0 //Mar2020 dont use dynamodb for this table
+//     //this.createMt() 
+//     //this.dfFilter() 
+//     //console.log('done fetchDacoData, Done forkJoin')
+//     // maybe:
+//     //this.setCcDfLocalStorage();
+//     //console.log('done fetchDacoData, Done forkJoin')
 
-  });  
-} //end getDacoData
+//   });  
+// } //end getDacoData
 /////////////////////////////////////////////
-transformFetchedFormats(forkedFormats){  
-  for (const d of (forkedFormats as any)) {
-    this.myDcFormatArray1.push(
-         {
-            id: null,
-            dfFormatKey: d.formatKey,
-            dfFormatName: d.formatName,
-            dfFormatDesc:  '?',
-            dfFilterInOut: 'init',
-            dfUsageCount:  0
-            }
-          );
-   }
+// transformFetchedFormats(forkedFormats){  
+//   for (const d of (forkedFormats as any)) {
+//     this.myDcFormatArray1.push(
+//          {
+//             id: null,
+//             dfFormatKey: d.formatKey,
+//             dfFormatName: d.formatName,
+//             dfFormatDesc:  '?',
+//             dfFilterInOut: 'init',
+//             dfUsageCount:  0
+//             }
+//           );
+//    }
+// }
+/////////////////////////////////////////////
+// transformFetchedContents(forkedContents){
+// for (const d of (forkedContents as any)) {
+//     if (d.contentName == 'Literal') {
+//       this.litOrJwf = 'lit'
+//     } else {
+//       this.litOrJwf = 'jwf'
+//     }
+//     this.myDcContentArray0.push(
+//        {
+//         id: null,
+//         contentName: d.contentName.toString().trim(),
+//         contentType: this.litOrJwf,
+//         contentMask: '',
+//          contentUsageCount: 0
+//          }
+//         );
+//  }
+// }
+/////////////////////////////////////////////
+// transformFetchedSkuFormats(forkedSkuFormats){
+// let fi = 0  // find index udc 41 S2
+// let blt = '' // bus line text
+// for (const d of (forkedSkuFormats as any)) {
+//  //fi = this.udc41S2Array.findIndex(x => x.busLine === "C");
+//  fi = this.udc41S2Array
+//  .findIndex(x => x.busLine === d.busLine.toString().trim() );
+//   if (fi > -1 ){  blt = this.udc41S2Array[fi].busLineTxt }
+//   this.myDcSkuFormatArray0.push( 
+//           {
+//                     id: null,
+//                     sfSku:  d.sku.toString().trim(),
+//                     sfLayer: d.layer.toString().trim(),
+//                     sfFormatKey: d.formatKey.toString().trim(),
+//                     sfFilterInOut: 'init',
+//                     sfBusLineTxt: blt
+//                     }
+//         );
+//  }
+// }
+/////////////////////////////////////////////
+// transformDacoFormatDetails(forkedFormatDetails){
+// for (const d of (forkedFormatDetails as any)) {
+//          this.myDcFormatDetailsArray0.push( 
+//           {
+//               id: null,
+//               fdRow: d.row,
+//               fdRowSlot: d.rowSlot,
+//               fdFormatKey: d.formatKey,
+//               fdContentName: d.contentName,
+//               fdMask: d.mask,
+//               fdFilterInOut: 'init'
+//            }
+//         );
+//  }
+// }
+/////////////////////////////////////////////
+getDacoDataJson(){
+  this.setCcFromContentJson()
+  this.setDfFromFormatJson()
+  this.setFdFromFormatDetailJson()
+  this.setSfFromskuLayerFormatJson()
+  this.createMt() 
+} // end getDacoDataJson
+/////////////////////////////////////////////
+
+setDfFromFormatJson(){
+this.dateCodeFormatArray0 = []
+let i = 0
+for (i = 0; i < formatJson.Items.length; i++) {
+  this.dateCodeFormatArray0.push(
+    {
+       id: i,
+       dfFormatKey: formatJson.Items[i].formatKey,
+       dfFormatName: formatJson.Items[i].formatName,
+       dfFormatDesc: '?',
+       dfFilterInOut: 'init',
+       dfUsageCount: 0
+    }
+  );
+} // end for loop
+
+} // end setFdFromFormatJson
+/////////////////////////////////////////////
+setFdFromFormatDetailJson(){
+this.formatDetailArray0 = []
+let i = 0
+for (i = 0; i < formatDetailJson.Items.length; i++) {
+ // if(formatDetailJson.Items[i].mask=='   ' ){alert(i)}
+ formatDetailJson.Items[i].mask =
+  formatDetailJson.Items[i].mask.replace(/ /g, "_")
+  this.formatDetailArray0.push(
+    {
+     id: i,
+     fdFormatKey: formatDetailJson.Items[i].formatKey,
+     fdRow: parseInt(formatDetailJson.Items[i].row),
+     fdRowSlot: parseInt(formatDetailJson.Items[i].slot),
+     fdContentName: formatDetailJson.Items[i].contentName,
+     fdMask: formatDetailJson.Items[i].mask,
+     fdFilterInOut: 'init'
+    }
+  );
+} // end for loop
+
+
 }
 /////////////////////////////////////////////
-transformFetchedContents(forkedContents){
-for (const d of (forkedContents as any)) {
-    if (d.contentName == 'Literal') {
+
+setSfFromskuLayerFormatJson()  //uses json file from the /assets folder
+{
+  let fi = 0  // find index udc 41 S2
+  let blt = '' // bus line text
+  let i = 0
+  for (i = 0; i < skuLayerFormatJson.Items.length; i++) {
+    fi = this.udc41S2Array
+    .findIndex(x => x.busLine === skuLayerFormatJson.Items[i].busLine.toString().trim() );
+    if (fi > -1 ){  blt = this.udc41S2Array[fi].busLineTxt } else {blt = '-'}
+    this.skuFormatArray0.push(
+      {
+        id: i,
+        sfFormatKey: skuLayerFormatJson.Items[i].formatKey,
+        sfSku: skuLayerFormatJson.Items[i].sku,
+        sfLayer: skuLayerFormatJson.Items[i].layer,
+        sfFilterInOut: 'init',
+        sfBusLineTxt: blt
+      }
+    );
+
+  } // end for loop
+}  // end setSfFromskuLayerFormatJson
+/////////////////////////////////////////////
+setCcFromContentJson(){
+  this.contentChoiceArray1 = []
+  let i = 0
+  for (i = 0; i < contentJson.Items.length; i++) {
+    if (contentJson.Items[i].contentName == 'Literal') {
       this.litOrJwf = 'lit'
     } else {
       this.litOrJwf = 'jwf'
     }
-    this.myDcContentArray0.push(
-       {
-        id: null,
-        contentName: d.contentName.toString().trim(),
-        contentType: this.litOrJwf,
-        contentMask: '',
-         contentUsageCount: 0
-         }
-        );
- }
-}
+    this.contentChoiceArray1.push(
+      {
+         id: i,
+         contentType: this.litOrJwf,
+         contentMask: '',
+         contentUsageCount: 0,
+         contentName: contentJson.Items[i].contentName
+      }
+    );
+  } // end for loop
+} // end setCcFromContentJson
 /////////////////////////////////////////////
-transformFetchedSkuFormats(forkedSkuFormats){
-for (const d of (forkedSkuFormats as any)) {
-         this.myDcSkuFormatArray0.push( 
-          {
-                    id: null,
-                    sfSku:  d.sku.toString().trim(),
-                    sfLayer: d.layer.toString().trim(),
-                    sfFormatKey: d.formatKey.toString().trim(),
-                    sfFilterInOut: 'init'
-                    }
-        );
- }
-}
-/////////////////////////////////////////////
-transformDacoFormatDetails(forkedFormatDetails){
-for (const d of (forkedFormatDetails as any)) {
-         this.myDcFormatDetailsArray0.push( 
-          {
-              id: null,
-              fdRow: d.row,
-              fdRowSlot: d.rowSlot,
-              fdFormatKey: d.formatKey,
-              fdContentName: d.contentName,
-              fdMask: d.mask,
-              fdFilterInOut: 'init'
-           }
-        );
- }
-}
 
 createMt(){
   let maskType = '?'
