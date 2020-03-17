@@ -1,5 +1,5 @@
-import { HttpModule } from '@angular/http'; 
-import { HttpClientModule } from '@angular/common/http';
+// import { HttpModule } from '@angular/http'; 
+// import { HttpClientModule } from '@angular/common/http';
 import { BrowserModule } from '@angular/platform-browser';
 import { FormsModule }  from '@angular/forms';
 import { NgModule, NO_ERRORS_SCHEMA } from '@angular/core';;
@@ -14,9 +14,9 @@ import { DragAndDropModule } from 'angular-draggable-droppable';
   imports: [
     DragAndDropModule,
     BrowserModule,
-    FormsModule,
-    HttpModule,
-    HttpClientModule    
+    FormsModule
+    // HttpModule,
+    // HttpClientModule    
   ],
   schemas: [ NO_ERRORS_SCHEMA ],
   providers: [],
